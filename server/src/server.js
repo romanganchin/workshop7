@@ -4,6 +4,10 @@ var express = require('express');
 var app = express();
 // Parses response bodies.
 var bodyParser = require('body-parser');
+//import mongodb
+var mongo_express = require('mongo-express/lib/middleware');
+// Import the default Mongo Express configuration
+var mongo_express_config = require('mongo-express/config.default.js');
 var database = require('./database');
 var readDocument = database.readDocument;
 var writeDocument = database.writeDocument;
@@ -17,7 +21,7 @@ var validate = require('express-jsonschema').validate;
 app.use(bodyParser.text());
 app.use(bodyParser.json());
 app.use(express.static('../client/build'));
-
+app.use('/mongo_express', mongo_express(mongo_express_config));
 /**
  * Resolves a feed item. Internal to the server, since it's synchronous.
  */
@@ -137,7 +141,7 @@ app.post('/feeditem', validate({ body: StatusUpdateSchema }), function(req, res)
   // If this function runs, `req.body` passed JSON validation!
   var body = req.body;
   var fromUser = getUserIdFromToken(req.get('Authorization'));
-  
+
   // Check if requester is authorized to post this status update.
   // (The requester must be the author of the update.)
   if (fromUser === body.userId) {
