@@ -17,7 +17,7 @@ var initialData = {
       "feed": new ObjectID("000000000000000000000002")
     },
     "3": {
-      "_id":new ObjectID("000000000000000000000003"),
+      "_id": new ObjectID("000000000000000000000003"),
       "fullName": "Another Person",
       "feed": new ObjectID("000000000000000000000003")
     },
@@ -37,7 +37,7 @@ var initialData = {
       // A list of users that liked the post. Here, "Someone Else" and "Another Person"
       // liked this particular post.
       "likeCounter": [
-        new ObjectID("000000000000000000000002"), new ObjectID("000000000000000000000003")
+        new ObjectID("000000000000000000000002"),new ObjectID("000000000000000000000003")
       ],
       // The type and contents of this feed item. This item happens to be a status
       // update.
@@ -97,7 +97,7 @@ var initialData = {
       "contents": []
     },
     "2": {
-      "_id": new ObjectID("000000000000000000000004"),
+      "_id": new ObjectID("000000000000000000000002"),
       "contents": []
     },
     "1": {
