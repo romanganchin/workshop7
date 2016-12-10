@@ -566,98 +566,142 @@ MongoClient.connect(url, function(err, db) {
     // Post a comment
     app.post('/feeditem/:feeditemid/comments', validate({ body: CommentSchema }), function(req, res) {
       var fromUser = getUserIdFromToken(req.get('Authorization'));
-      var comment = req.body;
       var author = req.body.author;
-      var feedItemId = req.params.feeditemid;
-      if (fromUser === author) {
-        var feedItem = readDocument('feedItems', feedItemId);
-        // Initialize likeCounter to empty.
-        comment.likeCounter = [];
-        // Push returns the new length of the array.
-        // The index of the new element is the length of the array minus 1.
-        // Example: [].push(1) returns 1, but the index of the new element is 0.
-        var index = feedItem.comments.push(comment) - 1;
-        writeDocument('feedItems', feedItem);
-        // 201: Created.
-        res.status(201);
-        res.set('Location', '/feeditem/' + feedItemId + "/comments/" + index);
-        // Return a resolved version of the feed item.
-        res.send(getFeedItemSync(feedItemId));
-      } else {
-        // Unauthorized.
-        res.status(401).end();
+      var feedItemId = new ObjectID(req.params.feeditemid);
+      var time = new Date().getTime();
+      var newComment = {
+        "author": new ObjectID(author),
+        "contents": req.body.contents,
+        "postDate": time,
+        "likeCounter": []
       }
-    });
-
-    app.put('/feeditem/:feeditemid/comments/:commentindex/likelist/:userid', function(req, res) {
-      var fromUser = getUserIdFromToken(req.get('Authorization'));
-      var userId = parseInt(req.params.userid, 10);
-      var feedItemId = parseInt(req.params.feeditemid, 10);
-      var commentIdx = parseInt(req.params.commentindex, 10);
-      // Only a user can mess with their own like.
-      if (fromUser === userId) {
-        var feedItem = readDocument('feedItems', feedItemId);
-        var comment = feedItem.comments[commentIdx];
-        // Only change the likeCounter if the user isn't in it.
-        if (comment.likeCounter.indexOf(userId) === -1) {
-          comment.likeCounter.push(userId);
+      if(fromUser === author){
+        db.collection('feedItems').updateOne({_id: feedItemId},
+          {
+            $push: {comments: newComment}
+          },
+          function(err) {
+            if (err) {
+              return sendDatabaseError(res, err);
+            }
+            else{
+              res.status(201);
+              res.set('Location', '/feeditem/' + req.params.feeditemid + '/comments/0');
+              getFeedItem(feedItemId, function(err, feedItem) {
+                if (err) {
+                  return sendDatabaseError(res, err);
+                }
+                else{
+                  res.send(feedItem);
+                }
+              });
+            }
+          });
         }
-        writeDocument('feedItems', feedItem);
-        comment.author = readDocument('users', comment.author);
-        // Send back the updated comment.
-        res.send(comment);
-      } else {
-        // Unauthorized.
-        res.status(401).end();
-      }
-    });
-
-    app.delete('/feeditem/:feeditemid/comments/:commentindex/likelist/:userid', function(req, res) {
-      var fromUser = getUserIdFromToken(req.get('Authorization'));
-      var userId = parseInt(req.params.userid, 10);
-      var feedItemId = parseInt(req.params.feeditemid, 10);
-      var commentIdx = parseInt(req.params.commentindex, 10);
-      // Only a user can mess with their own like.
-      if (fromUser === userId) {
-        var feedItem = readDocument('feedItems', feedItemId);
-        var comment = feedItem.comments[commentIdx];
-        var userIndex = comment.likeCounter.indexOf(userId);
-        if (userIndex !== -1) {
-          comment.likeCounter.splice(userIndex, 1);
-          writeDocument('feedItems', feedItem);
+        else{
+          res.status(401).end();
         }
-        comment.author = readDocument('users', comment.author);
-        res.send(comment);
-      } else {
-        // Unauthorized.
-        res.status(401).end();
-      }
-    });
-
-    // Reset the database.
-    app.post('/resetdb', function(req, res) {
-      console.log("Resetting database...");
-      ResetDatabase(db, function() {
-        res.send();
       });
-    });
 
-    /**
-    * Translate JSON Schema Validation failures into error 400s.
-    */
-    app.use(function(err, req, res, next) {
-      if (err.name === 'JsonSchemaValidation') {
-        // Set a bad request http response status
-        res.status(400).end();
-      } else {
-        // It's some other sort of error; pass it to next error middleware handler
-        next(err);
-      }
-    });
+      app.put('/feeditem/:feeditemid/comments/:commentindex/likelist/:userid', function(req, res) {
+        var fromUser = getUserIdFromToken(req.get('Authorization'));
+        var userId = req.params.userid;
+        var feedItemId = new ObjectID(req.params.feeditemid);
+        var commentIdx = parseInt(req.params.commentindex, 10);
+        // Only a user can mess with their own like.
+        if (fromUser === userId) {
+          db.collection('feedItems').updateOne({ _id: feedItemId },
+            {
+              $addToSet: {
+                [`comments.${commentIdx}.likeCounter`]: new ObjectID(userId)
+              }
+            }, function(err) {
+              if (err) {
+                return sendDatabaseError(res, err);
+              }
+              db.collection('feedItems').findOne({ _id: feedItemId }, function(err, feedItem) {
+                if (err) {
+                  return sendDatabaseError(res, err);
+                }
+                db.collection('users').findOne(
+                  {_id: new ObjectID(feedItem.comments[commentIdx].author)},
+                  function(err, auth){
+                    if(err){
+                      return sendDatabaseError(res, err);
+                    }
+                    feedItem.comments[commentIdx].author = auth;
+                    res.send(feedItem.comments[commentIdx]);
+                  });
+                });
+              });
+            } else {
+              // Unauthorized.
+              res.status(401).end();
+            }
+          });
 
-    // Starts the server on port 3000!
-    app.listen(3000, function () {
-      console.log('Example app listening on port 3000!');
-    });
-  });
-  // The file ends here. Nothing should be after this.
+          app.delete('/feeditem/:feeditemid/comments/:commentindex/likelist/:userid', function(req, res) {
+            var fromUser = getUserIdFromToken(req.get('Authorization'));
+            var userId = req.params.userid;
+            var feedItemId = new ObjectID(req.params.feeditemid);
+            var commentIdx = parseInt(req.params.commentindex, 10);
+            // Only a user can mess with their own like.
+            if (fromUser === userId) {
+              db.collection('feedItems').updateOne({ _id: feedItemId },
+                {
+                  $pull: {
+                    [`comments.${commentIdx}.likeCounter`]: new ObjectID(userId)
+                  }
+                }, function(err) {
+                  if (err) {
+                    return sendDatabaseError(res, err);
+                  }
+                  db.collection('feedItems').findOne({ _id: feedItemId }, function(err, feedItem) {
+                    if (err) {
+                      return sendDatabaseError(res, err);
+                    }
+                    db.collection('users').findOne(
+                      {_id: new ObjectID(feedItem.comments[commentIdx].author)},
+                      function(err, auth){
+                        if(err){
+                          return sendDatabaseError(res, err);
+                        }
+                        feedItem.comments[commentIdx].author = auth;
+                        res.send(feedItem.comments[commentIdx]);
+                      });
+                    }
+                  );
+                });
+              } else {
+                // Unauthorized.
+                res.status(401).end();
+              }
+            });
+            
+            // Reset the database.
+            app.post('/resetdb', function(req, res) {
+              console.log("Resetting database...");
+              ResetDatabase(db, function() {
+                res.send();
+              });
+            });
+
+            /**
+            * Translate JSON Schema Validation failures into error 400s.
+            */
+            app.use(function(err, req, res, next) {
+              if (err.name === 'JsonSchemaValidation') {
+                // Set a bad request http response status
+                res.status(400).end();
+              } else {
+                // It's some other sort of error; pass it to next error middleware handler
+                next(err);
+              }
+            });
+
+            // Starts the server on port 3000!
+            app.listen(3000, function () {
+              console.log('Example app listening on port 3000!');
+            });
+          });
+          // The file ends here. Nothing should be after this.
