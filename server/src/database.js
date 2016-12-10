@@ -110,7 +110,7 @@ var data;
 var updated = false;
 // Pull in Node's file system and path modules.
 var fs = require('fs'),
-  path = require('path');
+path = require('path');
 
 try {
   // ./database.json may be missing. The comment below prevents ESLint from
@@ -125,18 +125,18 @@ try {
 }
 
 /**
- * A dumb cloning routing. Serializes a JSON object as a string, then
- * deserializes it.
- */
+* A dumb cloning routing. Serializes a JSON object as a string, then
+* deserializes it.
+*/
 function JSONClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
 /**
- * Emulates reading a "document" from a NoSQL database.
- * Doesn't do any tricky document joins, as we will cover that in the latter
- * half of the course. :)
- */
+* Emulates reading a "document" from a NoSQL database.
+* Doesn't do any tricky document joins, as we will cover that in the latter
+* half of the course. :)
+*/
 function readDocument(collection, id) {
   // Clone the data. We do this to model a database, where you receive a
   // *copy* of an object and not the object itself.
@@ -153,8 +153,8 @@ function readDocument(collection, id) {
 module.exports.readDocument = readDocument;
 
 /**
- * Emulates writing a "document" to a NoSQL database.
- */
+* Emulates writing a "document" to a NoSQL database.
+*/
 function writeDocument(collection, changedDocument) {
   var id = changedDocument._id;
   if (id === undefined) {
@@ -168,8 +168,8 @@ function writeDocument(collection, changedDocument) {
 module.exports.writeDocument = writeDocument;
 
 /**
- * Adds a new document to the NoSQL database.
- */
+* Adds a new document to the NoSQL database.
+*/
 function addDocument(collectionName, newDoc) {
   var collection = data[collectionName];
   var nextId = Object.keys(collection).length;
@@ -186,8 +186,8 @@ function addDocument(collectionName, newDoc) {
 module.exports.addDocument = addDocument;
 
 /**
- * Deletes a document from an object collection.
- */
+* Deletes a document from an object collection.
+*/
 function deleteDocument(collectionName, id) {
   var collection = data[collectionName];
   if (!collection[id]) {
@@ -199,16 +199,16 @@ function deleteDocument(collectionName, id) {
 module.exports.deleteDocument = deleteDocument;
 
 /**
- * Returns an entire object collection.
- */
+* Returns an entire object collection.
+*/
 function getCollection(collectionName) {
   return JSONClone(data[collectionName]);
 }
 module.exports.getCollection = getCollection;
 
 /**
- * Reset the database.
- */
+* Reset the database.
+*/
 function resetDatabase() {
   data = JSONClone(initialData);
   updated = true;
